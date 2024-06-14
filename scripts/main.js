@@ -1,29 +1,87 @@
 "use strict";
 
-// Import the api functions from api.js
-import { api_PullUsers, api_PullTodos } from './apis.js';
+// Import the API functions from apis.js
+import { api_PullUsers, api_PullTodos, api_PullCategories, api_PostTodo, api_DeleteTodo } from './apis.js';
 
 let usersData;
+let categoryData;
 
 document.addEventListener('DOMContentLoaded', async function () {
-    if (window.location.pathname == '/Stay-Organized-Workshop/todos.html') {
+    if (window.location.pathname.includes('todos.html')) {
+        await fetchUsers().then(populateUsers);
+        document.getElementById('userDropDown').addEventListener('change', handleUserSelectTodos);
+    } else if (window.location.pathname.includes('new_todo.html')) {
         await fetchUsers().then(populateUsers);
 
         document.getElementById('userDropDown').addEventListener('change', handleUserSelect);
 
+        await fetchCategories().then(populateCategories);
 
-
-
+        // Add event listener to the submit button
+        document.getElementById('todoSubmit').addEventListener('click', handleSubmitTodo);
     }
 });
 
-//Functions for Todo Selection//
+// Function to handle form submission
+const handleSubmitTodo = async () => {
+    // Get form data
+    const formData = getFormData();
+
+    // Log the form data to the console (you can replace this with any other action you want)
+    console.log(formData);
+
+    // Post the form data
+    try {
+        const response = await postFormData(formData);
+        console.log('New Todo created:', response);
+    } catch (error) {
+        console.error('Error creating new Todo:', error);
+    }
+};
+
+// Function to post form data
+const postFormData = async (formData) => {
+    try {
+        const response = await api_PostTodo(formData);
+        return response;
+    } catch (error) {
+        throw error;
+    }
+};
+
+// Function to get the values from the form elements
+function getFormData() {
+    // Get values from dropdowns
+    const userid = document.getElementById('userDropDown').value;
+    const category = document.getElementById('categoryDropDown').value;
+    const priority = document.getElementById('urgencyDropDown').value;
+
+    // Get value from textarea
+    const description = document.getElementById('TA_todoDescription').value;
+
+    // Get value from deadline input
+    const deadline = document.getElementById('txt_Deadline').value;
+
+    return {
+        userid: userid,
+        category: category,
+        priority: priority,
+        description: description,
+        deadline: deadline
+    };
+}
+
+// Functions for Todo Selection
 
 const fetchUsers = async () => {
     usersData = await api_PullUsers();
 };
 
-const fetchTodosByUser = async function(_targetId) {
+const fetchCategories = async () => {
+    categoryData = await api_PullCategories();
+};
+
+const fetchTodosByUser = async function (_targetId) {
     const usersTodos = await api_PullTodos(_targetId);
     return usersTodos;
 };
@@ -37,18 +95,26 @@ const populateUsers = () => {
     if (usersData) {
         populateDropdown(usersData, 'userDropDown');
     }
-}
+};
 
-const findUsersName = function(_targetId) {
+const populateCategories = () => {
+    if (categoryData) {
+        populateDropdown(categoryData, 'categoryDropDown');
+    }
+};
+
+const findUsersName = function (_targetId) {
     return usersData.find(user => user.id === Number(_targetId));
-}
+};
 
 function populateDropdown(arr_Data, str_ElementId) {
     const dropDown = document.getElementById(str_ElementId);
-    dropDown.innerHTML = `
-    <option selected value="">Select One...</option>
-    <option value="All">Select All</option>
-    `;
+    if (window.location.pathname.includes('todos.html')) {
+        dropDown.innerHTML = `
+        <option selected value="">Select One...</option>
+        <option value="All">Select All</option>
+        `;
+    }
     let fragment = document.createDocumentFragment();
     arr_Data.forEach(entry => {
         fragment.appendChild(new Option(entry.name, entry.id));
@@ -57,34 +123,32 @@ function populateDropdown(arr_Data, str_ElementId) {
 }
 
 function populateList(arr_Data, str_ElementId) {
-
+    // Implementation needed
 }
 
+function handleUserSelect() {
+    // Implementation needed
+}
 
-function handleUserSelect(event) {
+function handleUserSelectTodos(event) {
     if (event.target.value != 'All' && event.target.value) {
         const selectedUser = findUsersName(event.target.value);
         console.log('Select user ID', event.target.value, selectedUser.name);
 
-        //Get Data
+        // Get Data
         fetchTodosByUser(event.target.value).then(pulledTodos => {
             console.log('Pulled Todos', pulledTodos);
             displayListTodos(pulledTodos);
         });
-        
-        
     } else if (event.target.value === "All") {
         console.log('Pull All Todos');
         fetchTodosByAll().then(pulledTodos => {
             displayListTodos(pulledTodos);
         });
-    }
-    else {
+    } else {
         console.log('No User Selected');
     }
-
 }
-
 
 function displayListTodos(arr) {
     let tableElement = document.getElementById('tBody');
@@ -109,21 +173,38 @@ function displayListTodos(arr) {
             switch (todo[mapping.dataKey]) {
                 case true:
                     cell.textContent = '✔';
-                  break;
+                    break;
                 case false:
                     cell.textContent = '✘';
-                  break;
+                    break;
                 default:
                     cell.textContent = todo[mapping.dataKey];
-                  break;
-              }
-            
+                    break;
+            }
+
             row.appendChild(cell);
         });
 
+        // Create delete button
+        const deleteCell = document.createElement('td');
+        const deleteButton = document.createElement('button');
+        deleteButton.textContent = 'Delete';
+        deleteButton.classList.add('btn', 'btn-danger');
+        deleteButton.addEventListener('click', () => handleDelete(todo.id, row));
+        deleteCell.appendChild(deleteButton);
+        row.appendChild(deleteCell);
+
         tableElement.appendChild(row);
     });
-
 }
 
-//End of Functions for Todos Selection//
+// Function to handle delete
+async function handleDelete(todoId, row) {
+    try {
+        await api_DeleteTodo(todoId);
+        row.remove();
+        console.log(`Todo with ID ${todoId} deleted`);
+    } catch (error) {
+        console.error(`Error deleting todo with ID ${todoId}:`, error);
+    }
+}
