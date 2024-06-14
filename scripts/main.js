@@ -19,6 +19,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         // Add event listener to the submit button
         document.getElementById('todoSubmit').addEventListener('click', handleSubmitTodo);
+    } else if (window.location.pathname.includes('details.html')) {
+        console.log('Stored Todo in Session Storage:', sessionStorage.getItem('selectedTodo'));
+        await fetchUsers();
+        displayTodoDetails();
     }
 });
 
@@ -181,15 +185,23 @@ function displayListTodos(arr) {
                     cell.textContent = todo[mapping.dataKey];
                     break;
             }
-
             row.appendChild(cell);
         });
+
+        // Add view details button/link
+        const detailsCell = document.createElement('td');
+        const detailsButton = document.createElement('button');
+        detailsButton.textContent = 'View Details';
+        detailsButton.classList.add('btn', 'btn-primary', 'btn-sm');
+        detailsButton.addEventListener('click', () => handleViewDetails(todo));
+        detailsCell.appendChild(detailsButton);
+        row.appendChild(detailsCell);
 
         // Create delete button
         const deleteCell = document.createElement('td');
         const deleteButton = document.createElement('button');
         deleteButton.textContent = 'Delete';
-        deleteButton.classList.add('btn', 'btn-danger');
+        deleteButton.classList.add('btn', 'btn-danger', 'btn-sm');
         deleteButton.addEventListener('click', () => handleDelete(todo.id, row));
         deleteCell.appendChild(deleteButton);
         row.appendChild(deleteCell);
@@ -197,6 +209,7 @@ function displayListTodos(arr) {
         tableElement.appendChild(row);
     });
 }
+
 
 // Function to handle delete
 async function handleDelete(todoId, row) {
@@ -208,3 +221,28 @@ async function handleDelete(todoId, row) {
         console.error(`Error deleting todo with ID ${todoId}:`, error);
     }
 }
+
+// Function to handle view Details
+function handleViewDetails(todo) {
+    // Store todo details in session storage
+    sessionStorage.setItem('selectedTodo', JSON.stringify(todo));
+
+    // Navigate to details.html
+    window.location.href = 'details.html';
+}
+
+// Function to display todo details on details.html
+const displayTodoDetails = () => {
+    // Retrieve todo details from session storage
+    const selectedTodo = JSON.parse(sessionStorage.getItem('selectedTodo'));
+    console.log('Selected Todo', selectedTodo);
+    // Display todo details
+    document.getElementById('user').textContent = findUsersName(selectedTodo.userid).name;
+    document.getElementById('category').textContent = selectedTodo.category;
+    document.getElementById('description').textContent = selectedTodo.description;
+    document.getElementById('deadline').textContent = selectedTodo.deadline;
+    document.getElementById('priority').textContent = selectedTodo.priority;
+
+    // Clear session storage after displaying details
+    sessionStorage.removeItem('selectedTodo');
+};
